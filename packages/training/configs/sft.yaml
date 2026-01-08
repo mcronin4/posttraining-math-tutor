@@ -1,0 +1,90 @@
+# =============================================================================
+# Supervised Fine-Tuning Configuration
+# =============================================================================
+# This configuration file defines the settings for fine-tuning a base model
+# to become a math tutoring assistant.
+
+# Training backend: local, tinker, openai, together
+backend: local
+
+# =============================================================================
+# Model Configuration
+# =============================================================================
+model:
+  # Base model to fine-tune
+  # Options: meta-llama/Llama-2-7b-hf, mistralai/Mistral-7B-v0.1, etc.
+  base_model: meta-llama/Llama-2-7b-hf
+
+  # Model type: causal_lm (decoder-only)
+  model_type: causal_lm
+
+  # Use Parameter-Efficient Fine-Tuning (PEFT/LoRA)
+  use_peft: true
+
+  # PEFT configuration (LoRA)
+  peft_config:
+    r: 16  # LoRA rank
+    lora_alpha: 32  # LoRA alpha (scaling)
+    lora_dropout: 0.05
+    target_modules:
+      - q_proj
+      - v_proj
+      - k_proj
+      - o_proj
+
+# =============================================================================
+# Data Configuration
+# =============================================================================
+data:
+  # Path to training data (JSONL format)
+  train_file: data/train.jsonl
+
+  # Optional evaluation data
+  eval_file: data/eval.jsonl
+
+  # Maximum sequence length
+  max_seq_length: 2048
+
+  # Prompt template: default, chat, instruct
+  prompt_template: chat
+
+# =============================================================================
+# Training Hyperparameters
+# =============================================================================
+training:
+  # Output directory for checkpoints and final model
+  output_dir: outputs/sft_math_tutor
+
+  # Number of training epochs
+  num_epochs: 3
+
+  # Batch size per device
+  batch_size: 4
+
+  # Gradient accumulation steps (effective batch = batch_size * grad_accum)
+  gradient_accumulation_steps: 4
+
+  # Learning rate
+  learning_rate: 2.0e-5
+
+  # Warmup ratio (fraction of total steps)
+  warmup_ratio: 0.1
+
+  # Weight decay for AdamW
+  weight_decay: 0.01
+
+  # Max gradient norm for clipping
+  max_grad_norm: 1.0
+
+  # Logging frequency
+  logging_steps: 10
+
+  # Evaluation frequency
+  eval_steps: 100
+
+  # Checkpoint saving frequency
+  save_steps: 500
+
+  # Random seed for reproducibility
+  seed: 42
+

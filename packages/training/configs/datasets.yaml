@@ -1,0 +1,92 @@
+# =============================================================================
+# Dataset Configuration
+# =============================================================================
+# This file defines the datasets available for training the math tutor.
+
+# =============================================================================
+# Dataset Registry
+# =============================================================================
+datasets:
+  # Synthetic tutoring examples generated from templates
+  synthetic_tutoring:
+    path: data/synthetic_tutoring.jsonl
+    description: Synthetically generated tutoring conversations
+    format: jsonl
+    fields:
+      - prompt
+      - response
+      - grade
+      - topic_tags
+    size_estimate: ~10000
+
+  # Curated examples from textbooks and educational resources
+  curated_examples:
+    path: data/curated_examples.jsonl
+    description: Hand-curated examples from educational materials
+    format: jsonl
+    fields:
+      - prompt
+      - response
+      - grade
+      - source
+    size_estimate: ~1000
+
+  # Safety and refusal training data
+  safety_data:
+    path: data/safety_training.jsonl
+    description: Examples for training appropriate refusal behavior
+    format: jsonl
+    fields:
+      - prompt
+      - response
+      - category
+    size_estimate: ~500
+
+# =============================================================================
+# Data Mixing Configuration
+# =============================================================================
+data_mix:
+  # Default mix for training
+  default:
+    - dataset: synthetic_tutoring
+      weight: 0.6
+    - dataset: curated_examples
+      weight: 0.3
+    - dataset: safety_data
+      weight: 0.1
+
+  # Emphasis on safety
+  safety_focused:
+    - dataset: synthetic_tutoring
+      weight: 0.4
+    - dataset: curated_examples
+      weight: 0.3
+    - dataset: safety_data
+      weight: 0.3
+
+# =============================================================================
+# Preprocessing Configuration
+# =============================================================================
+preprocessing:
+  # Remove examples with these issues
+  filters:
+    - min_prompt_length: 10
+    - max_prompt_length: 2000
+    - min_response_length: 20
+    - max_response_length: 1500
+
+  # Data augmentation (TODO)
+  augmentation:
+    enabled: false
+    techniques:
+      - synonym_replacement
+      - grade_level_variation
+
+# =============================================================================
+# Validation Splits
+# =============================================================================
+splits:
+  train_ratio: 0.9
+  eval_ratio: 0.1
+  stratify_by: grade  # Ensure grade distribution is preserved
+
