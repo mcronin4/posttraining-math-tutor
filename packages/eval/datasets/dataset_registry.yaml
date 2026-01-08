@@ -1,0 +1,79 @@
+
+
+# Benchmark Dataset Registry
+#
+# Defines standard datasets for benchmarking math tutoring models.
+# Use these datasets for consistent, reproducible evaluations.
+
+datasets:
+  # Small sample datasets (for quick testing)
+  samples:
+    math:
+      path: samples/math_samples.jsonl
+      description: "Small sample math problems (10 examples)"
+      size: 10
+      use_for: "quick testing, smoke tests"
+    
+    tutor:
+      path: samples/tutor_samples.jsonl
+      description: "Small sample tutoring prompts (10 examples)"
+      size: 10
+      use_for: "quick testing, smoke tests"
+    
+    safety:
+      path: samples/safety_samples.jsonl
+      description: "Small sample safety prompts (10 examples)"
+      size: 10
+      use_for: "quick testing, smoke tests"
+
+  # Standard benchmark datasets (download with download_datasets.py)
+  benchmarks:
+    gsm8k_test:
+      path: datasets/gsm8k_test.jsonl
+      description: "GSM8K test set - Grade School Math problems"
+      size: ~1319
+      source: "HuggingFace gsm8k"
+      download: "python download_datasets.py --dataset gsm8k --split test"
+      use_for: "math accuracy evaluation"
+    
+    math_test:
+      path: datasets/math_test.jsonl
+      description: "MATH test set - Competition math problems"
+      size: ~5000
+      source: "HuggingFace hendrycks/competition_math"
+      download: "python download_datasets.py --dataset math --split test"
+      use_for: "advanced math accuracy evaluation"
+    
+    # MathBench (if available)
+    mathbench:
+      path: datasets/mathbench.jsonl
+      description: "MathBench - Comprehensive K-12 math evaluation"
+      size: ~10000
+      source: "TBD"
+      download: "TBD"
+      use_for: "comprehensive math evaluation"
+
+# Default datasets for benchmarking
+defaults:
+  math_accuracy: "gsm8k_test"
+  tutoring_quality: "tutor"  # Use samples until we have tutoring-specific dataset
+  safety: "safety"
+
+# Dataset combinations for full benchmarks
+benchmark_suites:
+  quick:
+    math: "samples/math_samples.jsonl"
+    tutor: "samples/tutor_samples.jsonl"
+    safety: "samples/safety_samples.jsonl"
+  
+  standard:
+    math: "datasets/gsm8k_test.jsonl"
+    tutor: "samples/tutor_samples.jsonl"  # Note: Using samples until tutoring-specific dataset available
+    safety: "samples/safety_samples.jsonl"
+  
+  comprehensive:
+    math: "datasets/gsm8k_test.jsonl"
+    math_advanced: "datasets/math_test.jsonl"
+    tutor: "samples/tutor_samples.jsonl"
+    safety: "samples/safety_samples.jsonl"
+
