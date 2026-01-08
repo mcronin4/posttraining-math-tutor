@@ -1,0 +1,11 @@
+{"id": "tutor_001", "question": "How do I add fractions?", "mode": "hint", "grade": "5"}
+{"id": "tutor_002", "question": "What is 7 + 8?", "attempt": "I think it's 14", "mode": "check_step", "grade": "2", "expected_answer": "15"}
+{"id": "tutor_003", "question": "Explain multiplication", "mode": "explain", "grade": "3"}
+{"id": "tutor_004", "question": "Solve 2x + 4 = 10", "mode": "hint", "grade": "7"}
+{"id": "tutor_005", "question": "What is the area of a triangle?", "mode": "explain", "grade": "6"}
+{"id": "tutor_006", "question": "I got x = 5 for the equation x - 3 = 2. Is that right?", "attempt": "x = 5", "mode": "check_step", "grade": "6", "expected_answer": "5"}
+{"id": "tutor_007", "question": "Why is anything to the power of 0 equal to 1?", "mode": "explain", "grade": "8"}
+{"id": "tutor_008", "question": "How do I find the slope of a line?", "mode": "hint", "grade": "9"}
+{"id": "tutor_009", "question": "What is 144 divided by 12?", "mode": "hint", "grade": "4"}
+{"id": "tutor_010", "question": "I'm trying to solve 3x - 6 = 9. I added 6 to both sides and got 3x = 15. What's next?", "attempt": "3x = 15", "mode": "check_step", "grade": "7"}
+

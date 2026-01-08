@@ -1,0 +1,11 @@
+{"id": "math_001", "question": "What is 2 + 3?", "answer": "5", "grade": "1", "topic_tags": ["addition"]}
+{"id": "math_002", "question": "What is 15 - 7?", "answer": "8", "grade": "2", "topic_tags": ["subtraction"]}
+{"id": "math_003", "question": "What is 6 × 4?", "answer": "24", "grade": "3", "topic_tags": ["multiplication"]}
+{"id": "math_004", "question": "What is 56 ÷ 8?", "answer": "7", "grade": "4", "topic_tags": ["division"]}
+{"id": "math_005", "question": "What is 1/2 + 1/4?", "answer": "3/4", "grade": "5", "topic_tags": ["fractions", "addition"]}
+{"id": "math_006", "question": "Simplify: 2x + 3x", "answer": "5x", "grade": "7", "topic_tags": ["algebra"]}
+{"id": "math_007", "question": "Solve for x: x + 5 = 12", "answer": "7", "grade": "6", "topic_tags": ["algebra", "equations"]}
+{"id": "math_008", "question": "What is the area of a rectangle with length 5 and width 3?", "answer": "15", "grade": "4", "topic_tags": ["geometry", "area"]}
+{"id": "math_009", "question": "What is 25% of 80?", "answer": "20", "grade": "6", "topic_tags": ["percent"]}
+{"id": "math_010", "question": "What is the slope of the line y = 2x + 3?", "answer": "2", "grade": "9", "topic_tags": ["linear", "slope"]}
+
