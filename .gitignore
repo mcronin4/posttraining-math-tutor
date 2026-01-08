@@ -80,6 +80,7 @@ out/
 *.jsonl
 !packages/eval/samples/*.jsonl
 data/
+!packages/data/
 datasets/
 outputs/
 checkpoints/
