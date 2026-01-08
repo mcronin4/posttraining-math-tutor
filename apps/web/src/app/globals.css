@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   CSS Variables
+   ============================================================================ */
+
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --muted: #78716c;
+  --border: #e7e5e4;
+  --accent: #ee7712;
+  --accent-light: #fef7ee;
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+@layer base {
+  body {
+    @apply bg-surface-50 text-surface-900 antialiased;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-400;
+  }
+}
+
+/* ============================================================================
+   Component Patterns (shadcn/ui-like)
+   ============================================================================ */
+
+@layer components {
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface-200 text-surface-900 hover:bg-surface-300 active:bg-surface-400;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-surface-100 active:bg-surface-200;
+  }
+
+  .btn-outline {
+    @apply btn border border-surface-300 bg-transparent hover:bg-surface-100;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm placeholder:text-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all duration-200;
+  }
+
+  .textarea {
+    @apply input resize-none;
+  }
+
+  /* Select styles */
+  .select {
+    @apply input appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2378716c%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10;
+  }
+
+  /* Card styles */
+  .card {
+    @apply rounded-xl border border-surface-200 bg-white shadow-sm;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700;
+  }
+
+  .badge-secondary {
+    @apply badge bg-secondary-100 text-secondary-700;
+  }
+
+  /* Toggle/Switch styles */
+  .toggle {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+
+  .toggle[data-state="checked"] {
+    @apply bg-primary-500;
+  }
+
+  .toggle[data-state="unchecked"] {
+    @apply bg-surface-300;
+  }
+
+  .toggle-thumb {
+    @apply pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200;
+  }
+}
+
+/* ============================================================================
+   Chat Styles
+   ============================================================================ */
+
+@layer components {
+  .message-bubble {
+    @apply rounded-2xl px-4 py-3 max-w-[85%] animate-fade-in;
+  }
+
+  .message-user {
+    @apply message-bubble bg-primary-500 text-white ml-auto rounded-br-md;
+  }
+
+  .message-assistant {
+    @apply message-bubble bg-surface-100 text-surface-900 mr-auto rounded-bl-md;
+  }
+
+  .typing-indicator {
+    @apply flex gap-1 px-4 py-3;
+  }
+
+  .typing-dot {
+    @apply w-2 h-2 bg-surface-400 rounded-full animate-pulse-soft;
+  }
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent;
+  }
+}
+
