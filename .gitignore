@@ -82,6 +82,7 @@ out/
 data/
 !packages/data/
 datasets/
+!packages/eval/datasets/
 outputs/
 checkpoints/
 models/
