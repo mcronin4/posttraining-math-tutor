@@ -85,7 +85,7 @@ datasets/
 !packages/eval/datasets/
 outputs/
 checkpoints/
-models/
+#models/
 *.pt
 *.pth
 *.safetensors
