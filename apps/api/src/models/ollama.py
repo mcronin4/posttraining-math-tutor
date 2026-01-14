@@ -26,17 +26,20 @@ class OllamaAdapter(ModelAdapter):
     Uses Ollama's HTTP API to generate responses from models like Qwen 8B.
     """
 
-    def __init__(self, model_name: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(self, model_name: Optional[str] = None, base_url: Optional[str] = None, timeout: Optional[float] = None):
         """
         Initialize Ollama adapter.
 
         Args:
             model_name: Name of the Ollama model (e.g., "qwen3:8b")
             base_url: Ollama API base URL (defaults to http://localhost:11434)
+            timeout: Request timeout in seconds (defaults to OLLAMA_TIMEOUT env var or 60.0)
         """
         self.model_name = model_name or os.getenv("OLLAMA_MODEL", "qwen3:8b")
         self.base_url = (base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
-        self.client = httpx.AsyncClient(timeout=60.0)
+        # Get timeout from parameter, environment variable, or default to 60 seconds
+        timeout_value = timeout or float(os.getenv("OLLAMA_TIMEOUT", "60.0"))
+        self.client = httpx.AsyncClient(timeout=timeout_value)
 
     async def generate_response(
         self,
