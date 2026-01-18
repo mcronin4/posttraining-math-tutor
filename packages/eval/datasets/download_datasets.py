@@ -11,6 +11,7 @@ Downloads established math datasets for comprehensive benchmarking:
 Usage:
     python download_datasets.py --all
     python download_datasets.py --dataset gsm8k
+    python download_datasets.py --dataset gsm8k --limit 1000
     python download_datasets.py --dataset math --split test
 """
 
@@ -32,6 +33,7 @@ DATASET_CONFIGS = {
         "name": "gsm8k",
         "splits": ["test", "train"],
         "description": "Grade School Math 8K",
+        "revision": "cc7b047b6e5bb11b4f1af84efc572db110a51b3c",  # Pin to specific commit for reproducibility
     },
     "math": {
         "name": "hendrycks/competition_math",
@@ -47,14 +49,41 @@ DATASET_CONFIGS = {
 }
 
 
-def download_gsm8k(output_dir: Path, split: str = "test") -> Path:
-    """Download GSM8K dataset."""
+def download_gsm8k(output_dir: Path, split: str = "test", limit: int | None = None) -> Path:
+    """Download GSM8K dataset with optional limit for deterministic subset selection."""
+    config = DATASET_CONFIGS["gsm8k"]
+    revision = config.get("revision")
+    
     print(f"📥 Downloading GSM8K ({split} split)...")
-    dataset = load_dataset("gsm8k", "main", split=split)
+    if revision:
+        print(f"   📌 Pinned to revision: {revision[:8]}...")
+    
+    # Load dataset with revision pinning
+    load_kwargs = {"split": split}
+    if revision:
+        load_kwargs["revision"] = revision
+    dataset = load_dataset("gsm8k", "main", **load_kwargs)
 
-    output_file = output_dir / f"gsm8k_{split}.jsonl"
+    # Convert to list and sort deterministically by question text
+    items = list(dataset)
+    items.sort(key=lambda x: x['question'])
+    
+    # Limit if specified
+    if limit is not None:
+        if limit > len(items):
+            print(f"⚠️  Warning: Requested {limit} examples but only {len(items)} available")
+        else:
+            items = items[:limit]
+            print(f"📋 Limiting to first {limit} examples (sorted by question)")
+
+    # Use different filename for limited subsets
+    if limit is not None:
+        output_file = output_dir / f"gsm8k_{split}_{limit}.jsonl"
+    else:
+        output_file = output_dir / f"gsm8k_{split}.jsonl"
+    
     with open(output_file, "w") as f:
-        for item in dataset:
+        for item in items:
             # Convert GSM8K format to our format
             f.write(
                 json.dumps(
@@ -69,7 +98,7 @@ def download_gsm8k(output_dir: Path, split: str = "test") -> Path:
                 + "\n"
             )
 
-    print(f"✅ Saved {len(dataset)} examples to {output_file}")
+    print(f"✅ Saved {len(items)} examples to {output_file}")
     return output_file
 
 
@@ -122,7 +151,7 @@ def download_math(output_dir: Path, split: str = "test") -> Path:
     return output_file
 
 
-def download_all(output_dir: Path):
+def download_all(output_dir: Path, limit: int | None = None):
     """Download all supported datasets."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -132,7 +161,7 @@ def download_all(output_dir: Path):
 
     try:
         # Download GSM8K test set 
-        download_gsm8k(output_dir, "test")
+        download_gsm8k(output_dir, "test", limit=limit)
         download_math(output_dir, "test")
     except Exception as e:
         print(f"\n⚠️  Warning: Could not download dataset: {e}")
@@ -167,13 +196,19 @@ def main():
         default=Path(__file__).parent,
         help="Output directory for datasets",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit number of examples (creates deterministic subset by sorting)",
+    )
     args = parser.parse_args()
 
     if args.dataset == "all":
-        download_all(args.output_dir)
+        download_all(args.output_dir, limit=args.limit)
     elif args.dataset == "gsm8k":
         args.output_dir.mkdir(parents=True, exist_ok=True)
-        download_gsm8k(args.output_dir, args.split)
+        download_gsm8k(args.output_dir, args.split, limit=args.limit)
     elif args.dataset == "math":
         args.output_dir.mkdir(parents=True, exist_ok=True)
         download_math(args.output_dir, args.split)
