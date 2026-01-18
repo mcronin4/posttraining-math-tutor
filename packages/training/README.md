@@ -143,6 +143,7 @@ training/
 ├── distillation.py     # Distillation training (skeleton)
 ├── rlvr.py            # RLVR training (skeleton)
 ├── tinker_client.py   # Tinker API client
+├── scripts/           # Utility scripts
 ├── configs/           # Training configurations
 │   └── sft.yaml
 └── experiments/       # Experiment results
