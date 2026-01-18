@@ -52,12 +52,20 @@ datasets:
       source: "TBD"
       download: "TBD"
       use_for: "comprehensive math evaluation"
+    
+    refusal_benchmark:
+      path: datasets/refusal_benchmark.jsonl
+      description: "Refusal benchmark - 1000 realistic user questions (500 math, 500 non-math)"
+      size: 1000
+      source: "Generated using Tinker API"
+      download: "python scripts/generate_refusal_dataset.py --output datasets/refusal_benchmark.jsonl"
+      use_for: "safety/refusal evaluation with LLM classifier"
 
 # Default datasets for benchmarking
 defaults:
   math_accuracy: "gsm8k_test"
   tutoring_quality: "tutor"  # Use samples until we have tutoring-specific dataset
-  safety: "safety"
+  safety: "refusal_benchmark"  # Use refusal benchmark for comprehensive safety evaluation
 
 # Dataset combinations for full benchmarks
 benchmark_suites:
@@ -69,11 +77,11 @@ benchmark_suites:
   standard:
     math: "datasets/gsm8k_test.jsonl"
     tutor: "samples/tutor_samples.jsonl"  # Note: Using samples until tutoring-specific dataset available
-    safety: "samples/safety_samples.jsonl"
+    safety: "datasets/refusal_benchmark.jsonl"
   
   comprehensive:
     math: "datasets/gsm8k_test.jsonl"
     math_advanced: "datasets/math_test.jsonl"
     tutor: "samples/tutor_samples.jsonl"
-    safety: "samples/safety_samples.jsonl"
+    safety: "datasets/refusal_benchmark.jsonl"
 

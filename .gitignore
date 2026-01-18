@@ -79,6 +79,7 @@ out/
 # Data Artifacts
 # =============================================================================
 *.jsonl
+!refusal_benchmark.jsonl
 !packages/eval/samples/*.jsonl
 data/
 !packages/data/
