@@ -242,6 +242,11 @@ def parse_reasoning_blocks(response: str) -> tuple[str, Optional[str]]:
     This is useful for separating reasoning from the actual response content, ensuring
     that reasoning doesn't leak into conversation history or evaluation contexts.
     
+    This implementation is robust to malformed outputs where:
+    - Opening <think> tags may be missing or truncated
+    - Multiple </think> tags may appear without matching opening tags
+    - Content may appear before the first </think> tag
+    
     Args:
         response: Raw model output that may contain reasoning blocks
         
@@ -258,19 +263,60 @@ def parse_reasoning_blocks(response: str) -> tuple[str, Optional[str]]:
         >>> thinking
         'I need to solve this step by step'
     """
-    # Pattern to match <think>...</think> blocks
-    # Using non-greedy matching to handle multiple blocks
-    reasoning_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+    # Find all closing tags (case-insensitive) - this is more robust than requiring matching pairs
+    closing_tag_pattern = re.compile(r'</think>', re.IGNORECASE)
+    closing_tag_matches = list(closing_tag_pattern.finditer(response))
     
-    # Extract all reasoning blocks
+    # If no closing tags found, there's no thinking to extract
+    if not closing_tag_matches:
+        return response.strip(), None
+    
+    # Find the last closing tag position and its actual length
+    last_closing_match = closing_tag_matches[-1]
+    last_closing_pos = last_closing_match.start()
+    last_closing_tag_length = len(last_closing_match.group())
+    
+    # Everything after the last </think> (case-insensitive) is the final content
+    content = response[last_closing_pos + last_closing_tag_length:].strip()
+    
+    # Now extract thinking blocks - try to find matching pairs first (preferred, case-insensitive)
+    reasoning_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL | re.IGNORECASE)
     reasoning_matches = reasoning_pattern.findall(response)
     
-    # Combine all reasoning content
-    thinking = "\n".join(reasoning_matches).strip() if reasoning_matches else None
-    if thinking == "":
-        thinking = None
-    
-    # Remove reasoning blocks from content
-    content = reasoning_pattern.sub('', response).strip()
+    if reasoning_matches:
+        # We found properly matched pairs - use them
+        thinking = "\n".join(reasoning_matches).strip()
+        if thinking == "":
+            thinking = None
+    else:
+        # No properly matched pairs found - check if there's content before first </think>
+        first_closing_match = closing_tag_matches[0]
+        first_closing_pos = first_closing_match.start()
+        before_first_closing = response[:first_closing_pos].strip()
+        
+        # Check if there's a <think> tag before the first </think> (case-insensitive)
+        # If so, extract everything between <think> and </think>
+        think_open_pattern = re.compile(r'<think>', re.IGNORECASE)
+        think_open_matches = list(think_open_pattern.finditer(before_first_closing))
+        
+        if think_open_matches:
+            # Get the last opening tag before the closing tag
+            last_open_match = think_open_matches[-1]
+            think_open_pos = last_open_match.start()
+            think_open_tag_length = len(last_open_match.group())
+            # Extract from after <think> to before </think>
+            thinking = before_first_closing[think_open_pos + think_open_tag_length:].strip()
+            if thinking == "":
+                thinking = None
+        else:
+            # No opening tag found, but there's a closing tag
+            # This might be truncated output - treat everything before </think> as thinking
+            # but only if it's not empty and looks like it could be thinking content
+            if before_first_closing:
+                thinking = before_first_closing.strip()
+                if thinking == "":
+                    thinking = None
+            else:
+                thinking = None
     
     return content, thinking

@@ -279,7 +279,10 @@ Examples:
             )
         )
         
-        print(f"✅ Evaluation complete! Results saved to {args.output}")
+        # Calculate the actual results path (where orchestration saves results.json)
+        checkpoint_dir = args.output.parent / args.output.stem
+        final_results_path = checkpoint_dir / "results.json"
+        print(f"✅ Evaluation complete! Results saved to {final_results_path}")
         
     except Exception as e:
         print(f"\n❌ Error during evaluation: {e}")

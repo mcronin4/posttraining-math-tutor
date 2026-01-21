@@ -1,0 +1,64 @@
+================================================================================
+LLM-AS-A-JUDGE SOCRATIC EVALUATION SUMMARY
+================================================================================
+
+EVALUATION SETTINGS
+--------------------------------------------------------------------------------
+Timestamp: 2026-01-20 20:58:27
+Tutor Model: Qwen/Qwen3-8B
+Prompt Type: slim
+Max Turns: 10
+Total Problems: 1000
+Dataset: /Users/colin.gould/Desktop/code/capstone/posttraining-math-tutor/packages/eval/datasets/gsm8k_test_1000.jsonl
+
+OVERALL STATISTICS
+--------------------------------------------------------------------------------
+Problems Solved: 969/1000 (96.9%)
+Problems Not Solved: 31/1000 (3.1%)
+Average Turns per Conversation: 3.66
+
+RUNTIME STATISTICS
+--------------------------------------------------------------------------------
+Total Runtime: 27m 28s (1648.47 seconds)
+Average Time per Conversation: 1.65 seconds
+
+AVERAGE JUDGE SCORES (out of 10)
+--------------------------------------------------------------------------------
+Information Bottleneck: 8.49
+Diagnostic Accuracy: 7.42
+Socratic Depth: 7.10
+Math Soundness: 9.76
+Tone: 6.93
+
+Overall Average Score: 7.94
+
+TURN DISTRIBUTION
+--------------------------------------------------------------------------------
+  0 turn(s): 13 conversations (1.3%)
+  1 turn(s): 35 conversations (3.5%)
+  2 turn(s): 196 conversations (19.6%)
+  3 turn(s): 308 conversations (30.8%)
+  4 turn(s): 228 conversations (22.8%)
+  5 turn(s): 104 conversations (10.4%)
+  6 turn(s): 51 conversations (5.1%)
+  7 turn(s): 19 conversations (1.9%)
+  8 turn(s): 10 conversations (1.0%)
+  9 turn(s): 5 conversations (0.5%)
+  10 turn(s): 31 conversations (3.1%)
+
+SCORE DISTRIBUTION (by category)
+--------------------------------------------------------------------------------
+Information Bottleneck:
+  Min: 0.00  Max: 10.00  Median: 9.00  Mean: 8.49
+Diagnostic Accuracy:
+  Min: 0.00  Max: 10.00  Median: 8.00  Mean: 7.42
+Socratic Depth:
+  Min: 0.00  Max: 10.00  Median: 7.00  Mean: 7.10
+Math Soundness:
+  Min: 0.00  Max: 10.00  Median: 10.00  Mean: 9.76
+Tone:
+  Min: 0.00  Max: 10.00  Median: 7.00  Mean: 6.93
+
+================================================================================
+End of Summary
+================================================================================

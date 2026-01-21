@@ -26,6 +26,39 @@ from .prompts import get_all_student_profiles
 from .conversation import run_conversation, judge_conversation
 
 
+def get_score_value(judge_scores: dict, key: str) -> Optional[float]:
+    """
+    Get a score value from judge_scores, with fallback for 'tone' key.
+    
+    If the requested key is 'tone' and not found, falls back to any key
+    containing 'tone' (e.g., 'pedagogical_tone').
+    
+    Args:
+        judge_scores: Dictionary of judge scores
+        key: The score key to retrieve
+        
+    Returns:
+        The score value if found, None otherwise
+    """
+    if not judge_scores:
+        return None
+    
+    # Direct lookup first
+    if key in judge_scores:
+        value = judge_scores[key]
+        if isinstance(value, (int, float)):
+            return float(value)
+        return None
+    
+    # Fallback: if looking for 'tone' and not found, search for any key containing 'tone'
+    if key == "tone":
+        for score_key, score_value in judge_scores.items():
+            if "tone" in score_key.lower() and isinstance(score_value, (int, float)):
+                return float(score_value)
+    
+    return None
+
+
 async def run_single_conversation_with_judge(
     model_clients: ModelClients,
     problem: dict,
@@ -215,7 +248,8 @@ async def run_conversations(
     
     if remaining_count == 0:
         print("✅ All conversations already completed!")
-        return results
+        # Continue to save section below - don't return early
+        # This ensures results.json is saved even if the original run failed after completion
     
     # Create balanced persona assignments to ensure equal distribution
     # This prevents bias from uneven persona difficulty in small runs
@@ -341,13 +375,13 @@ async def run_conversations(
     if any(r.judge_scores for r in results):
         score_keys = ["information_bottleneck", "diagnostic_accuracy", "socratic_depth", "math_soundness", "tone"]
         for key in score_keys:
-            scores = [r.judge_scores.get(key) for r in results if r.judge_scores and r.judge_scores.get(key) is not None]
+            scores = [get_score_value(r.judge_scores, key) for r in results if get_score_value(r.judge_scores, key) is not None]
             if scores:
                 avg_scores[key] = sum(scores) / len(scores)
         
         # Calculate overall average across all categories
         if avg_scores:
-            all_scores = [r.judge_scores.get(key) for r in results for key in score_keys if r.judge_scores and r.judge_scores.get(key) is not None]
+            all_scores = [get_score_value(r.judge_scores, key) for r in results for key in score_keys if get_score_value(r.judge_scores, key) is not None]
             if all_scores:
                 overall_average = sum(all_scores) / len(all_scores)
     
@@ -475,7 +509,7 @@ async def run_conversations(
                 f.write("SCORE DISTRIBUTION (by category)\n")
                 f.write("-" * 80 + "\n")
                 for key in score_keys:
-                    scores = [r.judge_scores.get(key) for r in results if r.judge_scores and r.judge_scores.get(key) is not None]
+                    scores = [get_score_value(r.judge_scores, key) for r in results if get_score_value(r.judge_scores, key) is not None]
                     if scores:
                         min_score = min(scores)
                         max_score = max(scores)
