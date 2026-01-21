@@ -1,0 +1,64 @@
+================================================================================
+LLM-AS-A-JUDGE SOCRATIC EVALUATION SUMMARY
+================================================================================
+
+EVALUATION SETTINGS
+--------------------------------------------------------------------------------
+Timestamp: 2026-01-21 11:27:40
+Tutor Model: moonshotai/Kimi-K2-Thinking
+Prompt Type: slim
+Max Turns: 10
+Total Problems: 1000
+Dataset: /Users/colin.gould/Desktop/code/capstone/posttraining-math-tutor/packages/eval/datasets/gsm8k_test_1000.jsonl
+
+OVERALL STATISTICS
+--------------------------------------------------------------------------------
+Problems Solved: 962/1000 (96.2%)
+Problems Not Solved: 38/1000 (3.8%)
+Average Turns per Conversation: 3.92
+
+RUNTIME STATISTICS
+--------------------------------------------------------------------------------
+Total Runtime: 0s (0.16 seconds)
+Average Time per Conversation: 0.00 seconds
+
+AVERAGE JUDGE SCORES (out of 10)
+--------------------------------------------------------------------------------
+Information Bottleneck: 7.90
+Diagnostic Accuracy: 7.94
+Socratic Depth: 7.40
+Math Soundness: 9.69
+Tone: 8.63
+
+Overall Average Score: 8.31
+
+TURN DISTRIBUTION
+--------------------------------------------------------------------------------
+  0 turn(s): 10 conversations (1.0%)
+  1 turn(s): 24 conversations (2.4%)
+  2 turn(s): 215 conversations (21.5%)
+  3 turn(s): 255 conversations (25.5%)
+  4 turn(s): 193 conversations (19.3%)
+  5 turn(s): 131 conversations (13.1%)
+  6 turn(s): 76 conversations (7.6%)
+  7 turn(s): 28 conversations (2.8%)
+  8 turn(s): 25 conversations (2.5%)
+  9 turn(s): 5 conversations (0.5%)
+  10 turn(s): 38 conversations (3.8%)
+
+SCORE DISTRIBUTION (by category)
+--------------------------------------------------------------------------------
+Information Bottleneck:
+  Min: 1.00  Max: 10.00  Median: 9.00  Mean: 7.90
+Diagnostic Accuracy:
+  Min: 1.00  Max: 10.00  Median: 8.00  Mean: 7.94
+Socratic Depth:
+  Min: 1.00  Max: 10.00  Median: 8.00  Mean: 7.40
+Math Soundness:
+  Min: 1.00  Max: 10.00  Median: 10.00  Mean: 9.69
+Tone:
+  Min: 1.00  Max: 10.00  Median: 9.00  Mean: 8.63
+
+================================================================================
+End of Summary
+================================================================================

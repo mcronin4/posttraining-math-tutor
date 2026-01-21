@@ -87,6 +87,8 @@ datasets/
 !packages/eval/datasets/
 outputs/
 checkpoints/
+# LLM Judge outputs - ignore checkpoint files but allow results.json
+packages/eval/llm_judge/llm_judge_outputs/socratic*/checkpoint*
 #models/
 *.pt
 *.pth
