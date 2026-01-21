@@ -6,7 +6,7 @@ to the underlying model's expected role format (e.g., "user"/"assistant" for Kim
 """
 
 from tinker_cookbook import renderers
-from tinker_cookbook.renderers.base import Message, RenderContext, RenderedMessage
+from tinker_cookbook.renderers.base import Message,RenderContext, RenderedMessage
 import tinker
 
 
