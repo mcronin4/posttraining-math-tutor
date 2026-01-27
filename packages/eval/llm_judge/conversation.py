@@ -16,13 +16,12 @@ except ImportError:
     from eval.utils import parse_llm_json_response
     from eval.llm_judge.llm_judge_types import ModelClients, ConversationMessage, ConversationResult
 
-from .prompts import build_tutor_system_prompt, build_student_system_prompt
+from .prompts import build_tutor_system_prompt
 from .response_generation import (
     generate_response,
-    check_if_solved,
-    clean_student_response,
     reset_debug_tracking,
 )
+from .simulated_student import SimulatedStudent
 
 
 async def run_conversation(
@@ -33,8 +32,20 @@ async def run_conversation(
     prompt_type: str = "slim",
     debug: bool = False,
     log_buffer: Optional[List[str]] = None,
+    seed_error: Optional[str] = None,
 ) -> ConversationResult:
-    """Run a single tutoring conversation between tutor and student models."""
+    """Run a single tutoring conversation between tutor and student models.
+    
+    Args:
+        model_clients: Initialized model clients
+        problem: Problem dictionary with 'id', 'question', and 'answer' keys
+        student_profile: The student persona/profile description
+        max_turns: Maximum number of conversation turns
+        prompt_type: Type of tutor prompt to use
+        debug: If True, print debug information
+        log_buffer: Optional list to append log messages to
+        seed_error: Optional misconception/error to inject into the student's first message
+    """
     # Reset system prompt tracking for this conversation
     reset_debug_tracking()
     
@@ -43,11 +54,18 @@ async def run_conversation(
     expected_answer = problem.get("answer", "")
     
     messages: List[ConversationMessage] = []
-    # Build system prompts with problem included (persistent across all turns)
+    # Build system prompt for tutor with problem included (persistent across all turns)
     tutor_system_prompt = build_tutor_system_prompt(prompt_type=prompt_type, problem=problem_text)
-    student_system_prompt = build_student_system_prompt(student_profile=student_profile, problem=problem_text)
     
-    # Track conversation outcomes (checked from raw responses before cleaning)
+    # Create simulated student instance
+    simulated_student = SimulatedStudent(
+        client=model_clients.student_judge_client,
+        renderer=model_clients.student_judge_renderer,
+        tokenizer=model_clients.student_judge_tokenizer,
+        student_profile=student_profile,
+    )
+    
+    # Track conversation outcomes
     student_solved = False
     
     # Conversation loop
@@ -58,16 +76,14 @@ async def run_conversation(
         else:
             print(msg)
         # Student turn (student goes first)
-        # System prompt includes problem and profile, so no additional prompt needed
-        student_content, student_thinking = await generate_response(
-            client=model_clients.student_judge_client,
-            renderer=model_clients.student_judge_renderer,
-            tokenizer=model_clients.student_judge_tokenizer,
-            system_prompt=student_system_prompt,
-            conversation_history=messages,
+        # Use seed_error only on the first turn
+        current_seed_error = seed_error if turn == 1 else None
+        cleaned_response, student_thinking, student_solved = await simulated_student.generate_student_turn(
+            problem=problem_text,
+            history=messages,
+            seed_error=current_seed_error,
             temperature=0.9,  # Increased for more varied student responses
             max_tokens=8192, # Need longer max tokens because even when the 'response' is short, the thinking takes quite a few tokens
-            role="student",
             debug=debug,
             log_buffer=log_buffer,
         )
@@ -76,12 +92,7 @@ async def run_conversation(
             log_buffer.append(msg)
         else:
             print(msg)
-        # Check if student solved (using special token) before cleaning
-        # Note: We check the raw content before cleaning, but after reasoning extraction
-        student_solved = check_if_solved(student_content)
         
-        # Clean the response (remove tokens) before storing
-        cleaned_response = clean_student_response(student_content)
         messages.append(ConversationMessage(role="student", content=cleaned_response, thinking=student_thinking, turn=turn))
         
         # Break if student solved

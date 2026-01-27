@@ -1,0 +1,526 @@
+#!/usr/bin/env python3
+"""
+Test validation script for Socratic distillation training loop.
+
+This script runs a few test cycles to validate that the environment,
+conversation flow, and metrics collection work correctly without running
+full training.
+
+By default, uses both mathdial_seeds.jsonl and gsm8k_synthetic_errors.jsonl
+from packages/data/.
+
+Usage:
+    # Use default seed files (mathdial + gsm8k)
+    uv run python test_distillation.py --num-episodes 2
+    
+    # Use a single seed file
+    uv run python test_distillation.py --seeds-file ../../data/mathdial_seeds.jsonl --num-episodes 2
+    
+    # Use multiple seed files with limits
+    uv run python test_distillation.py --seeds-files ../../data/mathdial_seeds.jsonl 5 ../../data/gsm8k_synthetic_errors.jsonl 3
+"""
+
+import argparse
+import asyncio
+import os
+import sys
+from pathlib import Path
+from typing import List, Optional
+
+try:
+    import tinker
+    from tinker_cookbook import renderers
+    from tinker_cookbook.tokenizer_utils import get_tokenizer
+    from tinker_cookbook.model_info import get_recommended_renderer_name
+except ImportError:
+    print("❌ Error: Tinker SDK not found. Install with: pip install tinker")
+    sys.exit(1)
+
+# Add packages directory to path for imports
+script_dir = Path(__file__).resolve().parent
+packages_dir = script_dir.parent.parent.parent
+if str(packages_dir) not in sys.path:
+    sys.path.insert(0, str(packages_dir))
+
+from training.distillation.socratic_env import (
+    SocraticEnv,
+    SeedContext,
+    load_seeds_from_jsonl,
+    create_socratic_env_group_builder,
+)
+
+
+def build_tutor_convo_prefix(question: str) -> List[dict]:
+    """
+    Build the tutor conversation prefix (system prompt + initial context).
+    
+    This is what the tutor model sees before the conversation starts.
+    """
+    system_prompt = """You are a friendly and encouraging math tutor helping students learn mathematics. Your role is to guide students to understanding through questions and hints rather than giving direct answers.
+
+Core Principles:
+1. Never reveal the final answer directly - guide students to discover it themselves
+2. Ask guiding questions that help students discover the solution themselves
+3. Validate student thinking by acknowledging correct steps and gently redirecting incorrect approaches
+4. Be encouraging - celebrate progress and effort, not just correct answers
+
+Response Guidelines:
+- Keep responses concise (2-4 sentences for hints, slightly longer for explanations)
+- Use simple language appropriate for middle school students
+- Include encouragement when appropriate
+- Always end with a question or prompt for the student to continue their thinking
+
+Safety:
+- Only answer mathematics questions
+- Politely redirect off-topic questions back to math
+- Do not engage with inappropriate content
+"""
+    
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Math Problem: {question}\n\nPlease help the student work through this problem step by step."},
+    ]
+
+
+async def run_test_episode(
+    env: SocraticEnv,
+    tutor_client: tinker.SamplingClient,
+    max_steps: int = 10,
+    verbose: bool = True,
+) -> dict:
+    """
+    Run a single test episode through the environment.
+    
+    Args:
+        env: SocraticEnv instance
+        tutor_client: Tinker SamplingClient for tutor model
+        max_steps: Maximum steps to run (safety limit)
+        verbose: Whether to print conversation
+        
+    Returns:
+        Dictionary with episode metrics and conversation history
+    """
+    if verbose:
+        print(f"\n{'='*80}")
+        print(f"Starting episode for seed: {env.seed.id}")
+        print(f"{'='*80}")
+        print(f"\nProblem: {env.seed.question}")
+        if env.seed.initial_error:
+            print(f"Initial Error: {env.seed.initial_error}")
+        print()
+    
+    # Get initial observation
+    observation, stop_condition = await env.initial_observation()
+    
+    if env.episode_done:
+        if verbose:
+            print("⚠️  Episode ended immediately (student solved on first turn)")
+        return {
+            "episode_length": 0,
+            "solved": True,
+            "solved_on_first_turn": True,
+            "conversation": env.conversation_history,
+        }
+    
+    step_count = 0
+    conversation_history = []
+    
+    # Run episode loop
+    while not env.episode_done and step_count < max_steps:
+        step_count += 1
+        
+        if verbose:
+            print(f"\n--- Turn {step_count} ---")
+        
+        # Generate tutor response (mock - in real training this comes from the model being trained)
+        # For testing, we'll use a simple mock response generator
+        # In production, the observation (ModelInput) would be passed to the tutor model
+        try:
+            # Use a simple mock tutor response for testing
+            # In real training, this would be generated by the model being trained
+            mock_responses = [
+                "Let's think about this step by step. What information do we have?",
+                "That's a good start! Can you break this problem down into smaller parts?",
+                "Think about what operation we need to use here. What are we trying to find?",
+                "You're on the right track! What would be the next step?",
+                "Let's work through this together. What do you think we should do first?",
+            ]
+            
+            # Use a simple response based on turn number
+            mock_response = mock_responses[min(step_count - 1, len(mock_responses) - 1)]
+            
+            # Convert to Action format (token IDs)
+            # Action is a type alias for list[int], so we just use the token list directly
+            tutor_tokens = env.tutor_renderer.tokenizer.encode(mock_response, add_special_tokens=False)
+            action = tutor_tokens
+            
+        except Exception as e:
+            print(f"⚠️  Error generating tutor response: {e}")
+            import traceback
+            traceback.print_exc()
+            # Use a fallback response for testing
+            tutor_tokens = env.tutor_renderer.tokenizer.encode(
+                "Let's think about this step by step. What information do we have?",
+                add_special_tokens=False
+            )
+            # Action is a type alias for list[int], so we just use the token list directly
+            action = tutor_tokens
+        
+        # Take step in environment
+        step_result = await env.step(action)
+        
+        # Record conversation
+        if env.conversation_history:
+            last_tutor_msg = next(
+                (msg for msg in reversed(env.conversation_history) if msg.role == "tutor"),
+                None
+            )
+            last_student_msg = next(
+                (msg for msg in reversed(env.conversation_history) if msg.role == "student"),
+                None
+            )
+            
+            if verbose:
+                if last_tutor_msg:
+                    print(f"Tutor: {last_tutor_msg.content[:200]}...")
+                if last_student_msg:
+                    print(f"Student: {last_student_msg.content[:200]}...")
+        
+        # Check if episode is done
+        if step_result.episode_done:
+            if verbose:
+                print(f"\n✓ Episode ended after {step_count} turns")
+                if env.student_solved:
+                    print("✓ Student solved the problem!")
+                else:
+                    print("⚠️  Episode ended without solution")
+            break
+        
+        # Update observation for next step
+        observation = step_result.next_observation
+        stop_condition = step_result.next_stop_condition
+    
+    # Collect final metrics
+    final_metrics = {
+        "episode_length": step_count,
+        "solved": env.student_solved,
+        "solved_on_first_turn": step_count == 0 and env.student_solved,
+        "max_turns_reached": step_count >= max_steps,
+        "conversation": env.conversation_history,
+    }
+    
+    return final_metrics
+
+
+async def test_environment_setup(
+    seed: SeedContext,
+    tutor_model_name: str,
+    student_model_name: str,
+    base_url: Optional[str] = None,
+    verbose: bool = True,
+) -> bool:
+    """
+    Test that environment can be created and initialized.
+    
+    Returns:
+        True if setup successful, False otherwise
+    """
+    try:
+        if verbose:
+            print(f"\n🔧 Testing environment setup for seed: {seed.id}")
+        
+        # Create Tinker clients
+        service_client = tinker.ServiceClient(base_url=base_url)
+        tutor_client = service_client.create_sampling_client(base_model=tutor_model_name)
+        student_client = service_client.create_sampling_client(base_model=student_model_name)
+        
+        # Get renderers and tokenizers
+        tutor_tokenizer = get_tokenizer(tutor_model_name)
+        tutor_renderer_name = get_recommended_renderer_name(tutor_model_name)
+        tutor_renderer = renderers.get_renderer(tutor_renderer_name, tokenizer=tutor_tokenizer)
+        student_tokenizer = get_tokenizer(student_model_name)
+        student_renderer_name = get_recommended_renderer_name(student_model_name)
+        student_renderer = renderers.get_renderer(student_renderer_name, tokenizer=student_tokenizer)
+        
+        # Create SimulatedStudent
+        from eval.llm_judge.simulated_student import SimulatedStudent
+        simulated_student = SimulatedStudent(
+            client=student_client,
+            renderer=student_renderer,
+            tokenizer=student_tokenizer,
+            student_profile="You are a middle school student working on word problems. You sometimes get overwhelmed when problems have multiple steps. You need clear, step-by-step guidance.",
+        )
+        
+        # Build tutor conversation prefix
+        tutor_convo_prefix = build_tutor_convo_prefix(seed.question)
+        
+        # Create environment
+        env = SocraticEnv(
+            seed=seed,
+            tutor_renderer=tutor_renderer,
+            simulated_student=simulated_student,
+            student_profile="You are a middle school student working on word problems.",
+            max_turns=5,  # Reduced for testing
+            tutor_convo_prefix=tutor_convo_prefix,
+        )
+        
+        if verbose:
+            print("✅ Environment created successfully")
+        
+        return (True, env, tutor_client)
+        
+    except Exception as e:
+        if verbose:
+            print(f"❌ Environment setup failed: {e}")
+            import traceback
+            traceback.print_exc()
+        return False, None, None
+
+
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Test validation script for Socratic distillation training loop"
+    )
+    parser.add_argument(
+        "--seeds-file",
+        type=Path,
+        default=None,
+        help="Path to single JSONL file with seed contexts (for backward compatibility)",
+    )
+    parser.add_argument(
+        "--seeds-files",
+        type=str,
+        nargs="+",
+        metavar=("FILE", "LIMIT"),
+        default=None,
+        help="Multiple seed files with optional limits. Format: --seeds-files file1.jsonl [limit1] file2.jsonl [limit2] ...",
+    )
+    parser.add_argument(
+        "--num-episodes",
+        type=int,
+        default=2,
+        help="Number of test episodes to run per file (default: 2)",
+    )
+    parser.add_argument(
+        "--tutor-model",
+        type=str,
+        default="Qwen/Qwen3-8B",
+        help="Tutor model name (default: Qwen/Qwen3-8B)",
+    )
+    parser.add_argument(
+        "--student-model",
+        type=str,
+        default="moonshotai/Kimi-K2-Thinking",
+        help="Student model name (default: moonshotai/Kimi-K2-Thinking)",
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default=None,
+        help="Tinker base URL (default: None for local/production)",
+    )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=5,
+        help="Maximum steps per episode (default: 5)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print detailed conversation output",
+    )
+    
+    args = parser.parse_args()
+    
+    # Check for API key
+    api_key = os.getenv("TINKER_API_KEY")
+    if not api_key:
+        print("❌ Error: TINKER_API_KEY environment variable not set")
+        print("   Set it with: export TINKER_API_KEY=your-key-here")
+        print("   Or create a .env file in packages/training/")
+        sys.exit(1)
+    
+    # Determine seed files to use
+    # Default to both mathdial_seeds.jsonl and gsm8k_synthetic_errors.jsonl if none specified
+    # Script is at: packages/training/distillation/test_distillation.py
+    # packages/ directory is at: script_dir.parent.parent
+    packages_dir = script_dir.parent.parent
+    data_dir = packages_dir / "data"
+    
+    seeds_files_list = None
+    
+    if args.seeds_file is not None and args.seeds_files is not None:
+        print("❌ Error: Cannot specify both --seeds-file and --seeds-files")
+        sys.exit(1)
+    
+    if args.seeds_file is not None:
+        # Single file mode (backward compatible)
+        if not args.seeds_file.exists():
+            print(f"❌ Error: Seeds file not found: {args.seeds_file}")
+            sys.exit(1)
+        seeds_files_list = [(args.seeds_file, args.num_episodes)]
+    elif args.seeds_files is not None:
+        # Multiple files mode - parse the arguments
+        # Format: file1.jsonl [limit1] file2.jsonl [limit2] ...
+        seeds_files_list = []
+        i = 0
+        while i < len(args.seeds_files):
+            file_path = Path(args.seeds_files[i])
+            # Check if next argument is a number (limit)
+            if i + 1 < len(args.seeds_files) and args.seeds_files[i + 1].isdigit():
+                limit = int(args.seeds_files[i + 1])
+                i += 2
+            else:
+                limit = args.num_episodes
+                i += 1
+            
+            if not file_path.exists():
+                # Try relative to data directory
+                data_path = data_dir / file_path.name
+                if data_path.exists():
+                    file_path = data_path
+                else:
+                    print(f"❌ Error: Seeds file not found: {file_path}")
+                    sys.exit(1)
+            
+            seeds_files_list.append((file_path, limit))
+    else:
+        # Default: use both seed files
+        mathdial_file = data_dir / "mathdial_seeds.jsonl"
+        gsm8k_file = data_dir / "gsm8k_synthetic_errors.jsonl"
+        
+        if not mathdial_file.exists():
+            print(f"❌ Error: Default seed file not found: {mathdial_file}")
+            sys.exit(1)
+        if not gsm8k_file.exists():
+            print(f"❌ Error: Default seed file not found: {gsm8k_file}")
+            sys.exit(1)
+        
+        seeds_files_list = [
+            (mathdial_file, args.num_episodes),
+            (gsm8k_file, args.num_episodes),
+        ]
+        print(f"📂 Using default seed files:")
+        print(f"   - {mathdial_file.name} (limit: {args.num_episodes})")
+        print(f"   - {gsm8k_file.name} (limit: {args.num_episodes})")
+    
+    # Load seeds from all files
+    seeds = []
+    for seeds_file, file_limit in seeds_files_list:
+        print(f"📂 Loading seeds from: {seeds_file.name} (limit: {file_limit})")
+        file_seeds = load_seeds_from_jsonl(
+            seeds_file,
+            limit=file_limit,
+            id_prefix=seeds_file.stem
+        )
+        seeds.extend(file_seeds)
+        print(f"   ✅ Loaded {len(file_seeds)} seed(s) from {seeds_file.name} (total: {len(seeds)})")
+    
+    if not seeds:
+        print("❌ Error: No seeds loaded from any file")
+        sys.exit(1)
+    
+    print(f"\n✅ Total seeds loaded: {len(seeds)}")
+    
+    # Test each seed
+    results = []
+    for i, seed in enumerate(seeds, 1):
+        print(f"\n{'='*80}")
+        print(f"Test Episode {i}/{len(seeds)}")
+        print(f"{'='*80}")
+        
+        # Test environment setup
+        success, env, tutor_client = await test_environment_setup(
+            seed=seed,
+            tutor_model_name=args.tutor_model,
+            student_model_name=args.student_model,
+            base_url=args.base_url,
+            verbose=args.verbose,
+        )
+        
+        if not success or env is None:
+            print(f"❌ Failed to set up environment for seed {seed.id}")
+            results.append({
+                "seed_id": seed.id,
+                "success": False,
+                "error": "Environment setup failed",
+            })
+            continue
+        
+        # Run test episode
+        try:
+            episode_metrics = await run_test_episode(
+                env=env,
+                tutor_client=tutor_client,
+                max_steps=args.max_steps,
+                verbose=args.verbose,
+            )
+            
+            results.append({
+                "seed_id": seed.id,
+                "success": True,
+                "episode_length": episode_metrics["episode_length"],
+                "solved": episode_metrics["solved"],
+                "solved_on_first_turn": episode_metrics["solved_on_first_turn"],
+                "max_turns_reached": episode_metrics.get("max_turns_reached", False),
+                "num_messages": len(episode_metrics["conversation"]),
+            })
+            
+            if args.verbose:
+                print(f"\n📊 Episode Metrics:")
+                print(f"   Length: {episode_metrics['episode_length']} turns")
+                print(f"   Solved: {episode_metrics['solved']}")
+                print(f"   Messages: {len(episode_metrics['conversation'])}")
+            
+        except Exception as e:
+            print(f"❌ Error running episode: {e}")
+            import traceback
+            traceback.print_exc()
+            results.append({
+                "seed_id": seed.id,
+                "success": False,
+                "error": str(e),
+            })
+    
+    # Print summary
+    print(f"\n{'='*80}")
+    print("TEST SUMMARY")
+    print(f"{'='*80}")
+    
+    successful = sum(1 for r in results if r.get("success", False))
+    total = len(results)
+    
+    print(f"Total episodes: {total}")
+    print(f"Successful: {successful}")
+    print(f"Failed: {total - successful}")
+    
+    if successful > 0:
+        avg_length = sum(r.get("episode_length", 0) for r in results if r.get("success")) / successful
+        solved_count = sum(1 for r in results if r.get("success") and r.get("solved"))
+        print(f"\nAverage episode length: {avg_length:.1f} turns")
+        print(f"Episodes where student solved: {solved_count}/{successful}")
+    
+    # Print detailed results
+    if args.verbose:
+        print(f"\n{'='*80}")
+        print("DETAILED RESULTS")
+        print(f"{'='*80}")
+        for result in results:
+            print(f"\nSeed: {result['seed_id']}")
+            if result.get("success"):
+                print(f"  ✅ Success")
+                print(f"  Episode length: {result.get('episode_length', 0)}")
+                print(f"  Solved: {result.get('solved', False)}")
+            else:
+                print(f"  ❌ Failed: {result.get('error', 'Unknown error')}")
+    
+    # Exit with error code if any tests failed
+    if successful < total:
+        sys.exit(1)
+    
+    print("\n✅ All tests passed!")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

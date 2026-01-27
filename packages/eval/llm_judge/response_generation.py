@@ -202,22 +202,49 @@ async def generate_response(
             
             # Check for incomplete thinking tag
             if has_incomplete_thinking_tag(raw_output):
+                # Print full output for observability
+                output_length = len(raw_output)
+                last_think_start = raw_output.rfind("<think>")
+                
+                log_lines = []
+                log_lines.append(f"   ⚠️  Detected incomplete thinking tag (output length: {output_length} chars)")
+                log_lines.append(f"   📝 Full raw output from {role}:")
+                log_lines.append("   " + "-" * 76)
+                
+                # Show the full output, but truncate if extremely long (>50k chars) to avoid overwhelming logs
+                if output_length > 50000:
+                    log_lines.append(f"   [Output truncated - showing last 50k chars of {output_length} total]")
+                    log_lines.append("   " + raw_output[-50000:])
+                else:
+                    log_lines.append("   " + raw_output)
+                
+                log_lines.append("   " + "-" * 76)
+                if last_think_start >= 0:
+                    log_lines.append(f"   Last <think> tag starts at position {last_think_start}")
+                
                 if retry_count < max_retries:
                     # Double the max_tokens for retry
                     current_max_tokens = current_max_tokens * 2
                     retry_count += 1
-                    msg = f"   ⚠️  Detected incomplete thinking tag. Retrying with max_tokens={current_max_tokens} (retry {retry_count}/{max_retries})"
+                    log_lines.append(f"   🔄 Retrying with max_tokens={current_max_tokens} (retry {retry_count}/{max_retries})")
+                    
+                    # Join all log lines
+                    full_msg = "\n".join(log_lines)
                     if log_buffer is not None:
-                        log_buffer.append(msg)
+                        log_buffer.append(full_msg)
                     else:
-                        print(msg)
+                        print(full_msg)
                     continue
                 else:
-                    msg = f"   ⚠️  Detected incomplete thinking tag but max retries ({max_retries}) reached. Returning partial response."
+                    log_lines.append(f"   ⚠️  Max retries ({max_retries}) reached. Returning partial response.")
+                    
+                    # Join all log lines
+                    full_msg = "\n".join(log_lines)
                     if log_buffer is not None:
-                        log_buffer.append(msg)
+                        log_buffer.append(full_msg)
                     else:
-                        print(msg)
+                        print(full_msg)
+                    # Fall through to parse partial response
             
             # Parse reasoning blocks and separate content from thinking
             content, thinking = parse_reasoning_blocks(raw_output)

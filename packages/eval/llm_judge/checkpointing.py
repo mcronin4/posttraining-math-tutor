@@ -133,7 +133,7 @@ def save_checkpoint(
         output_path: Full path to the output JSON file (used to determine checkpoint subdirectory)
         max_turns: Maximum turns per conversation
         total_problems: Total number of problems in the run (num_conversations or dataset size)
-        prompt_type: Type of tutor prompt ("slim" or "optimized")
+        prompt_type: Type of tutor prompt ("slim", "optimized", or "unprompted")
         tutor_model_name: Name or path of the tutor model being evaluated
         dataset_path: Path to the dataset file used
         checkpoint_interval: Checkpoint interval used

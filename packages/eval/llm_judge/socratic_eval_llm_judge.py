@@ -90,6 +90,9 @@ Examples:
     # Run evaluation with a base model name
     python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type slim
     
+    # Run evaluation with unprompted baseline (no socratic instructions)
+    python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type unprompted
+    
     # Run evaluation with a Tinker checkpoint path
     python socratic_eval_llm_judge.py --tutor-model tinker://checkpoint/path --prompt-type slim
     
@@ -97,6 +100,7 @@ Examples:
     python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type slim --num-conversations 10
     
     # Resume from a previous run (subdirectory name within llm_judge/llm_judge_outputs)
+    # Note: prompt_type must match the checkpoint's prompt_type
     python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type slim --resume socratic_eval_20240101_120000
     
     # Specify custom output filename or subdirectory/filename
@@ -138,9 +142,9 @@ Examples:
     parser.add_argument(
         "--prompt-type",
         type=str,
-        choices=["slim", "optimized"],
+        choices=["slim", "optimized", "unprompted"],
         required=True,
-        help="Type of tutor prompt to use: 'slim' or 'optimized'",
+        help="Type of tutor prompt to use: 'slim', 'optimized', or 'unprompted' (no socratic instructions)",
     )
     parser.add_argument(
         "--debug",
@@ -196,6 +200,17 @@ Examples:
         latest_checkpoint = find_latest_checkpoint(resume_dir)
         if latest_checkpoint:
             _, checkpoint_metadata_for_main = load_checkpoint(latest_checkpoint)
+            
+            # Validate prompt_type matches checkpoint when resuming
+            checkpoint_prompt_type = checkpoint_metadata_for_main.get("prompt_type")
+            if checkpoint_prompt_type:
+                # If user explicitly provided a prompt_type, it must match the checkpoint
+                if args.prompt_type != checkpoint_prompt_type:
+                    print(f"❌ Error: Prompt type mismatch when resuming!")
+                    print(f"   Checkpoint has: {checkpoint_prompt_type}")
+                    print(f"   Command line has: {args.prompt_type}")
+                    print(f"   Checkpoints can only be resumed with the same prompt type.")
+                    sys.exit(1)
         
         # When resuming, if arguments match defaults, pass None so checkpoint metadata is used
         # This allows checkpoint values to be used when user doesn't explicitly override
@@ -206,6 +221,7 @@ Examples:
             args.checkpoint_interval = None
         # For prompt_type, since it's required, we check if it equals the default "slim"
         # If so, treat it as "not explicitly provided" and let checkpoint metadata override it
+        # However, we validate above that it matches the checkpoint if explicitly provided
         if args.prompt_type == "slim":
             args.prompt_type = None
     else:

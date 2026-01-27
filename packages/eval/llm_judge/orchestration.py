@@ -142,7 +142,7 @@ async def run_conversations(
         max_turns: Maximum number of conversation turns
         output_path: Path to save final results
         num_conversations: Limit number of conversations (None for all)
-        prompt_type: Type of tutor prompt ("slim" or "optimized")
+        prompt_type: Type of tutor prompt ("slim", "optimized", or "unprompted")
         tutor_model_name: Name or path of the tutor model being evaluated (required for checkpointing)
         debug: Enable debug logging
         checkpoint_interval: Save checkpoint every N conversations (default: 50)
@@ -208,6 +208,16 @@ async def run_conversations(
                 if prompt_type is None and checkpoint_metadata.get("prompt_type"):
                     prompt_type = checkpoint_metadata["prompt_type"]
                     print(f"📋 Using prompt_type from checkpoint: {prompt_type}")
+                elif prompt_type is not None and checkpoint_metadata.get("prompt_type"):
+                    # Validate that prompt_type matches checkpoint when explicitly provided
+                    checkpoint_prompt_type = checkpoint_metadata["prompt_type"]
+                    if prompt_type != checkpoint_prompt_type:
+                        raise ValueError(
+                            f"Prompt type mismatch! Cannot resume checkpoint with different prompt type.\n"
+                            f"  Checkpoint has: {checkpoint_prompt_type}\n"
+                            f"  Command line has: {prompt_type}\n"
+                            f"  Checkpoints can only be resumed with the same prompt type."
+                        )
                 if dataset_path is None and checkpoint_metadata.get("dataset_path"):
                     dataset_path = Path(checkpoint_metadata["dataset_path"])
                     print(f"📋 Using dataset_path from checkpoint: {dataset_path}")

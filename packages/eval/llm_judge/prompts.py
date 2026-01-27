@@ -23,12 +23,22 @@ def build_tutor_system_prompt(prompt_type: str = "slim", problem: Optional[str] 
     """Build the system prompt for the tutor model from JSON file.
     
     Args:
-        prompt_type: Type of prompt to load - either "slim" or "optimized"
+        prompt_type: Type of prompt to load - either "slim", "optimized", or "unprompted"
         problem: The math problem text to include in the system prompt
     
     Returns:
-        The tutor system prompt as a string with the problem included
+        The tutor system prompt as a string with the problem included.
+        For "unprompted", returns only the problem text without any socratic instructions.
     """
+    # Handle "unprompted" case - return only the problem, no socratic instructions
+    if prompt_type == "unprompted":
+        if problem:
+            return f"""
+# Current Math Problem
+{problem}"""
+        else:
+            return ""
+    
     tutor_prompt_path = Path(__file__).parent.parent.parent / "core" / "prompts" / "tutor_system_prompt.json"
     if tutor_prompt_path.exists():
         with open(tutor_prompt_path, "r") as f:
