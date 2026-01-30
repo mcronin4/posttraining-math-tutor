@@ -4,8 +4,8 @@ LLM-as-a-Judge Socratic Evaluation
 
 Initializes Tinker sampling clients for LLM-as-a-judge evaluation system:
 - Tutor model: The model being evaluated (specified via CLI)
-- Student model: Kimi-K2-Thinking (acts as confused student)
-- Judge model: Kimi-K2-Thinking (evaluates tutoring trajectories, shares client with student)
+- Student model: Configurable via --student-model (default: Kimi-K2-Thinking, acts as confused student)
+- Judge model: Configurable via --judge-model (default: Kimi-K2-Thinking, evaluates tutoring trajectories)
 
 Usage:
     python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B
@@ -93,6 +93,12 @@ Examples:
     # Run evaluation with unprompted baseline (no socratic instructions)
     python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type unprompted
     
+    # Run evaluation with a different student model
+    python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type slim --student-model Qwen/Qwen3-8B
+    
+    # Run evaluation with different student and judge models
+    python socratic_eval_llm_judge.py --tutor-model Qwen/Qwen3-8B --prompt-type slim --student-model Qwen/Qwen3-8B --judge-model moonshotai/Kimi-K2-Thinking
+    
     # Run evaluation with a Tinker checkpoint path
     python socratic_eval_llm_judge.py --tutor-model tinker://checkpoint/path --prompt-type slim
     
@@ -114,6 +120,18 @@ Examples:
         type=str,
         required=True,
         help="Tutor model name or Tinker checkpoint path (the model being evaluated)",
+    )
+    parser.add_argument(
+        "--student-model",
+        type=str,
+        default="moonshotai/Kimi-K2-Thinking",
+        help="Student model name (default: moonshotai/Kimi-K2-Thinking)",
+    )
+    parser.add_argument(
+        "--judge-model",
+        type=str,
+        default="moonshotai/Kimi-K2-Thinking",
+        help="Judge model name (default: moonshotai/Kimi-K2-Thinking)",
     )
     parser.add_argument(
         "--dataset",
@@ -253,7 +271,7 @@ Examples:
         
         # Initialize all models
         model_clients = initialize_all_models(
-            service_client, args.tutor_model
+            service_client, args.tutor_model, args.student_model, args.judge_model
         )
         
         # Load dataset

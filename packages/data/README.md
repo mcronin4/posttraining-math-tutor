@@ -58,6 +58,81 @@ Build or update the curriculum taxonomy from sources.
 
 **Status:** Placeholder - future implementation for expanding taxonomy
 
+### Off-Policy Dataset Processing
+
+Scripts for processing MathDial and SocraticMATH datasets into a unified format for off-policy distillation.
+
+#### `process_mathdial_offpolicy.py`
+
+Downloads and processes MathDial dataset from HuggingFace (`eth-nlped/mathdial`).
+
+**Usage:**
+```bash
+cd packages/data
+uv run python scripts/process_mathdial_offpolicy.py \
+    --output mathdial_offpolicy.jsonl \
+    --max 1000 \
+    --split train
+```
+
+**Features:**
+- Removes strategy tags like `(probing)`, `(generic)` from teacher messages
+- Parses conversation format: `"Teacher: (strategy)message|EOM|Student: message|EOM|..."`
+- Extracts question, ground truth, and conversation history
+- Preserves metadata (student_profile, etc.)
+
+#### `process_socraticmath_offpolicy.py`
+
+Downloads and processes SocraticMATH dataset from HuggingFace (`facat/Socratic`).
+
+**Usage:**
+```bash
+cd packages/data
+uv run python scripts/process_socraticmath_offpolicy.py \
+    --output socraticmath_offpolicy.jsonl \
+    --max 1000
+```
+
+**Features:**
+- Handles Chinese text (preserved as-is)
+- Parses JSON array format: `["teacher_msg1", "student_msg1", ..., "ProblemID", "Analysis"]`
+- Extracts metadata (ProblemID, Analysis)
+- Includes first teacher message in history (skipped for training targets later)
+
+#### `convert_to_offpolicy_format.py`
+
+Validates and combines processed datasets into unified format.
+
+**Usage:**
+```bash
+cd packages/data
+uv run python scripts/convert_to_offpolicy_format.py \
+    --input mathdial_offpolicy.jsonl socraticmath_offpolicy.jsonl \
+    --output unified_offpolicy.jsonl
+```
+
+**Features:**
+- Validates conversation trajectories
+- Checks role alternation, message validity
+- Combines multiple datasets
+- Outputs unified JSONL format
+
+**Output Format:**
+```json
+{
+  "id": "mathdial_5000012",
+  "question": "What is 2+2?",
+  "expected_answer": "4",
+  "messages": [
+    {"role": "tutor", "content": "What do you think?", "turn": 0},
+    {"role": "student", "content": "4", "turn": 1},
+    {"role": "tutor", "content": "Correct!", "turn": 2}
+  ],
+  "source": "mathdial",
+  "metadata": {"student_profile": "..."}
+}
+```
+
 ## Curriculum Taxonomy
 
 The taxonomy is defined in `packages/core/src/curriculum.ts` and `packages/core/curriculum/ontario_math_taxonomy.json`.

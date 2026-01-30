@@ -111,6 +111,20 @@ After your first message, you can respond naturally based on the tutor's guidanc
             - thinking: The reasoning content from <think> blocks (None if no blocks found)
             - solved: Whether the student has solved the problem
         """
+        # DEBUG: Log what history we're receiving
+        if debug:
+            debug_msg = f"\n🔍 DEBUG (generate_student_turn): Received history with {len(history)} messages"
+            if log_buffer is not None:
+                log_buffer.append(debug_msg)
+            else:
+                print(debug_msg)
+            for i, msg in enumerate(history):
+                debug_msg = f"  History[{i}]: role={msg.role}, turn={msg.turn}, content_len={len(msg.content)}"
+                if log_buffer is not None:
+                    log_buffer.append(debug_msg)
+                else:
+                    print(debug_msg)
+        
         # Build system prompt with optional seed error injection
         system_prompt = self._build_system_prompt(problem, seed_error)
         

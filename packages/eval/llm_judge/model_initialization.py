@@ -52,7 +52,7 @@ def initialize_tutor_model(
         print(f"   Using custom TutorStudentKimiRenderer for role mapping")
         renderer = TutorStudentKimiRenderer(tokenizer)
     else:
-        # For other models (e.g., Qwen), use standard renderer which supports custom roles
+        # For other models, use standard renderer which supports custom roles
         renderer = renderers.get_renderer(renderer_name, tokenizer)
     
     # Create sampling client
@@ -64,29 +64,28 @@ def initialize_tutor_model(
     return sampling_client, tokenizer, renderer
 
 
-def initialize_student_judge_model(
+def initialize_student_model(
     service_client: tinker.ServiceClient,
-    model_name: str = "moonshotai/Kimi-K2-Thinking",
+    model_name: str,
 ) -> tuple[tinker.SamplingClient, any, any]:
     """
-    Initialize student and judge model (shared client).
+    Initialize student model.
     
     Args:
         service_client: Tinker ServiceClient instance
-        model_name: Model name for student/judge (default: Kimi-K2-Thinking)
+        model_name: Model name for student
         
     Returns:
         Tuple of (sampling_client, tokenizer, renderer)
     """
-    print(f"🎓 Initializing student/judge model: {model_name}")
+    print(f"🎓 Initializing student model: {model_name}")
     
-    
-    # Create shared sampling client
+    # Create sampling client
     sampling_client = service_client.create_sampling_client(base_model=model_name)
 
     tokenizer = sampling_client.get_tokenizer()
 
-    # Get recommended renderer name (should return "kimi_k2")
+    # Get recommended renderer name
     print(f"   Getting recommended renderer name for {model_name}...")
     renderer_name = get_recommended_renderer_name(model_name)
 
@@ -95,23 +94,64 @@ def initialize_student_judge_model(
         print(f"   Using custom TutorStudentKimiRenderer for role mapping")
         renderer = TutorStudentKimiRenderer(tokenizer)
     else:
-        # For other models, use standard renderer
+        # For other models, use standard renderer which supports custom roles
         renderer = renderers.get_renderer(renderer_name, tokenizer)
 
-    print(f"   ✅ Student/judge model initialized (shared client)\n")
+    print(f"   ✅ Student model initialized\n")
+    return sampling_client, tokenizer, renderer
+
+
+def initialize_judge_model(
+    service_client: tinker.ServiceClient,
+    model_name: str,
+) -> tuple[tinker.SamplingClient, any, any]:
+    """
+    Initialize judge model.
+    
+    Args:
+        service_client: Tinker ServiceClient instance
+        model_name: Model name for judge
+        
+    Returns:
+        Tuple of (sampling_client, tokenizer, renderer)
+    """
+    print(f"⚖️  Initializing judge model: {model_name}")
+    
+    # Create sampling client
+    sampling_client = service_client.create_sampling_client(base_model=model_name)
+
+    tokenizer = sampling_client.get_tokenizer()
+
+    # Get recommended renderer name
+    print(f"   Getting recommended renderer name for {model_name}...")
+    renderer_name = get_recommended_renderer_name(model_name)
+
+    # Use custom renderer for Kimi models to support tutor/student role mapping
+    if "kimi" in model_name.lower() or renderer_name == "kimi_k2":
+        print(f"   Using custom TutorStudentKimiRenderer for role mapping")
+        renderer = TutorStudentKimiRenderer(tokenizer)
+    else:
+        # For other models, use standard renderer which supports custom roles
+        renderer = renderers.get_renderer(renderer_name, tokenizer)
+
+    print(f"   ✅ Judge model initialized\n")
     return sampling_client, tokenizer, renderer
 
 
 def initialize_all_models(
     service_client: tinker.ServiceClient,
     tutor_model_name: str,
+    student_model_name: str = "moonshotai/Kimi-K2-Thinking",
+    judge_model_name: str = "moonshotai/Kimi-K2-Thinking",
 ) -> ModelClients:
     """
-    Initialize all three model clients for LLM-as-a-judge evaluation.
+    Initialize all model clients for LLM-as-a-judge evaluation.
     
     Args:
         service_client: Tinker ServiceClient instance
         tutor_model_name: Model name or path for tutor model
+        student_model_name: Model name for student (default: Kimi-K2-Thinking)
+        judge_model_name: Model name for judge (default: Kimi-K2-Thinking)
         
     Returns:
         ModelClients dataclass containing all initialized clients
@@ -121,9 +161,14 @@ def initialize_all_models(
     print("=" * 80)
     print()
     
-    # Initialize student/judge model (shared)
-    student_judge_client, student_judge_tokenizer, student_judge_renderer = (
-        initialize_student_judge_model(service_client)
+    # Initialize student model
+    student_client, student_tokenizer, student_renderer = (
+        initialize_student_model(service_client, student_model_name)
+    )
+
+    # Initialize judge model
+    judge_client, judge_tokenizer, judge_renderer = (
+        initialize_judge_model(service_client, judge_model_name)
     )
 
     # Initialize tutor model
@@ -135,8 +180,8 @@ def initialize_all_models(
     print("✅ ALL MODELS INITIALIZED")
     print("=" * 80)
     print(f"Tutor Model:      {tutor_model_name}")
-    print(f"Student Model:    moonshotai/Kimi-K2-Thinking")
-    print(f"Judge Model:      moonshotai/Kimi-K2-Thinking (shared client)")
+    print(f"Student Model:   {student_model_name}")
+    print(f"Judge Model:     {judge_model_name}")
     print()
     
     return ModelClients(
@@ -144,8 +189,12 @@ def initialize_all_models(
         tutor_tokenizer=tutor_tokenizer,
         tutor_renderer=tutor_renderer,
         tutor_model_name=tutor_model_name,
-        student_judge_client=student_judge_client,
-        student_judge_tokenizer=student_judge_tokenizer,
-        student_judge_renderer=student_judge_renderer,
-        student_judge_model_name="moonshotai/Kimi-K2-Thinking",
+        student_client=student_client,
+        student_tokenizer=student_tokenizer,
+        student_renderer=student_renderer,
+        student_model_name=student_model_name,
+        judge_client=judge_client,
+        judge_tokenizer=judge_tokenizer,
+        judge_renderer=judge_renderer,
+        judge_model_name=judge_model_name,
     )

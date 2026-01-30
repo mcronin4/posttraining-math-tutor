@@ -522,5 +522,99 @@ async def main():
     print("\n✅ All tests passed!")
 
 
+def test_thinking_tag_removal():
+    """
+    Test that incomplete thinking tags are properly removed from student responses.
+    
+    This test verifies the fix for the issue where opening <think> tags without
+    closing </think> tags were not being removed properly.
+    """
+    # Import the parse_reasoning_blocks function
+    script_dir = Path(__file__).resolve().parent
+    packages_dir = script_dir.parent.parent.parent
+    if str(packages_dir) not in sys.path:
+        sys.path.insert(0, str(packages_dir))
+    from eval.utils import parse_reasoning_blocks
+    
+    print("\n" + "="*80)
+    print("Testing thinking tag removal")
+    print("="*80)
+    
+    # Test case 1: Incomplete thinking tag at the start (the reported issue)
+    test_input_1 = """<think>Okay, so the problem says $240 was divided between Kelvin and Samuel, and Samuel got 3/4 of the money. I thought that meant I should divide 240 by 3 and then multiply by 4... so 240 ÷ 3 = 80, and 80 × 4 = 320. Wait, that can't be right because there's only $240 total. I'm confused. 
+
+But then it says Samuel spent 1/5 of the original $240 on drinks. So do I need to find 1/5 of 240? That's 240 ÷ 5 = 48. 
+
+So if Samuel had $320 but only $240 exists... I think I messed up the first part. How do you actually find 3/4 of something?<|im_end|>"""
+    
+    content_1, thinking_1 = parse_reasoning_blocks(test_input_1)
+    print(f"\nTest 1: Incomplete thinking tag at start")
+    print(f"  Input length: {len(test_input_1)} chars")
+    print(f"  Content length: {len(content_1)} chars")
+    print(f"  Content: {repr(content_1[:100])}...")
+    print(f"  Thinking: {thinking_1}")
+    
+    # The content should be empty or minimal (just the <|im_end|> token if present)
+    # The thinking should be None since it's incomplete
+    assert thinking_1 is None, f"Expected thinking to be None for incomplete tag, got: {thinking_1}"
+    assert "<think>" not in content_1, f"Content should not contain <think> tag, got: {content_1[:200]}"
+    print("  ✅ Test 1 passed")
+    
+    # Test case 2: Complete thinking tag followed by incomplete one
+    test_input_2 = """<think>First thought</think>Some content here<think>Incomplete thought without closing tag"""
+    content_2, thinking_2 = parse_reasoning_blocks(test_input_2)
+    print(f"\nTest 2: Complete tag followed by incomplete tag")
+    print(f"  Content: {repr(content_2)}")
+    print(f"  Thinking: {thinking_2}")
+    
+    assert thinking_2 == "First thought", f"Expected 'First thought', got: {thinking_2}"
+    assert content_2 == "Some content here", f"Expected 'Some content here', got: {content_2}"
+    assert "<think>" not in content_2, f"Content should not contain <think> tag"
+    print("  ✅ Test 2 passed")
+    
+    # Test case 3: Only incomplete thinking tag (no closing tag)
+    test_input_3 = """<think>This is incomplete thinking without a closing tag"""
+    content_3, thinking_3 = parse_reasoning_blocks(test_input_3)
+    print(f"\nTest 3: Only incomplete thinking tag")
+    print(f"  Content: {repr(content_3)}")
+    print(f"  Thinking: {thinking_3}")
+    
+    assert thinking_3 is None, f"Expected thinking to be None for incomplete tag, got: {thinking_3}"
+    assert content_3 == "", f"Expected empty content, got: {repr(content_3)}"
+    assert "<think>" not in content_3, f"Content should not contain <think> tag"
+    print("  ✅ Test 3 passed")
+    
+    # Test case 4: Incomplete tag with content before it
+    test_input_4 = """Some valid content before<think>Incomplete thinking"""
+    content_4, thinking_4 = parse_reasoning_blocks(test_input_4)
+    print(f"\nTest 4: Content before incomplete tag")
+    print(f"  Content: {repr(content_4)}")
+    print(f"  Thinking: {thinking_4}")
+    
+    assert thinking_4 is None, f"Expected thinking to be None for incomplete tag, got: {thinking_4}"
+    assert content_4 == "Some valid content before", f"Expected 'Some valid content before', got: {repr(content_4)}"
+    assert "<think>" not in content_4, f"Content should not contain <think> tag"
+    print("  ✅ Test 4 passed")
+    
+    # Test case 5: Normal complete tags (should still work)
+    test_input_5 = """<think>Complete thought</think>Valid response content"""
+    content_5, thinking_5 = parse_reasoning_blocks(test_input_5)
+    print(f"\nTest 5: Normal complete tags")
+    print(f"  Content: {repr(content_5)}")
+    print(f"  Thinking: {thinking_5}")
+    
+    assert thinking_5 == "Complete thought", f"Expected 'Complete thought', got: {thinking_5}"
+    assert content_5 == "Valid response content", f"Expected 'Valid response content', got: {repr(content_5)}"
+    print("  ✅ Test 5 passed")
+    
+    print("\n" + "="*80)
+    print("✅ All thinking tag removal tests passed!")
+    print("="*80 + "\n")
+
+
 if __name__ == "__main__":
+    # Run thinking tag removal tests first
+    test_thinking_tag_removal()
+    
+    # Then run the main test suite
     asyncio.run(main())

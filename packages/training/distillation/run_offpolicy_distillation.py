@@ -1,27 +1,25 @@
 """
-Run on-policy distillation with Socratic tutoring environment.
+Run off-policy distillation with pre-existing conversation trajectories.
 
-This script provides a command-line interface for running distillation training.
-The core distillation logic is in distillation.py.
+This script provides a command-line interface for running off-policy distillation
+training using conversation trajectories from MathDial and SocraticMATH datasets.
 
 Usage:
-    # Single seed file
-    uv run python run_distillation.py \
+    # Single conversation file
+    uv run python run_offpolicy_distillation.py \
         --tutor-model Qwen3-8B \
-        --student-model Kimi-K2-Thinking \
         --teacher-model Qwen3-35B-A22B-Instruct \
-        --seeds-file ../../data/mathdial_seeds.jsonl \
-        --log-path ./logs/distillation_run_001 \
+        --conversations-file ../../data/unified_offpolicy.jsonl \
+        --log-path ./logs/offpolicy_distillation_run_001 \
         --learning-rate 1e-5 \
         --max-tokens 2048
 
-    # Multiple seed files with limits
-    uv run python run_distillation.py \
+    # Multiple conversation files with limits
+    uv run python run_offpolicy_distillation.py \
         --tutor-model Qwen3-8B \
-        --student-model Kimi-K2-Thinking \
         --teacher-model Qwen3-35B-A22B-Instruct \
-        --seeds-files ../../data/mathdial_seeds.jsonl 2000 ../../data/gsm8k_synthetic_errors.jsonl 3000 \
-        --log-path ./logs/distillation_run_002 \
+        --conversations-files ../../data/mathdial_offpolicy.jsonl 2000 ../../data/socraticmath_offpolicy.jsonl 3000 \
+        --log-path ./logs/offpolicy_distillation_run_002 \
         --learning-rate 1e-5 \
         --max-tokens 2048
 """
@@ -34,12 +32,12 @@ from typing import List, Optional
 
 from tinker_cookbook.distillation.train_on_policy import main
 
-from training.distillation.distillation import build_socratic_config
+from training.distillation.distillation import build_offpolicy_socratic_config
 
 
-def parse_seeds_files_args(args_list: List[str]) -> List[tuple[Path, Optional[int]]]:
+def parse_conversations_files_args(args_list: List[str]) -> List[tuple[Path, Optional[int]]]:
     """
-    Parse seeds_files argument list into list of (file_path, limit) tuples.
+    Parse conversations_files argument list into list of (file_path, limit) tuples.
     
     Expected format: [file1, limit1, file2, limit2, ...]
     If limit is missing for a file, it defaults to None (no limit).
@@ -66,27 +64,25 @@ def parse_seeds_files_args(args_list: List[str]) -> List[tuple[Path, Optional[in
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Run on-policy distillation with Socratic tutoring environment",
+        description="Run off-policy distillation with pre-existing conversation trajectories",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Single seed file
-  uv run python run_distillation.py \\
+  # Single conversation file
+  uv run python run_offpolicy_distillation.py \\
       --tutor-model Qwen3-8B \\
-      --student-model Kimi-K2-Thinking \\
       --teacher-model Qwen3-35B-A22B-Instruct \\
-      --seeds-file ../../data/mathdial_seeds.jsonl \\
-      --log-path ./logs/distillation_run_001 \\
+      --conversations-file ../../data/unified_offpolicy.jsonl \\
+      --log-path ./logs/offpolicy_distillation_run_001 \\
       --learning-rate 1e-5 \\
       --max-tokens 2048
 
-  # Multiple seed files with limits
-  uv run python run_distillation.py \\
+  # Multiple conversation files with limits
+  uv run python run_offpolicy_distillation.py \\
       --tutor-model Qwen3-8B \\
-      --student-model Kimi-K2-Thinking \\
       --teacher-model Qwen3-35B-A22B-Instruct \\
-      --seeds-files ../../data/mathdial_seeds.jsonl 2000 ../../data/gsm8k_synthetic_errors.jsonl 3000 \\
-      --log-path ./logs/distillation_run_002 \\
+      --conversations-files ../../data/mathdial_offpolicy.jsonl 2000 ../../data/socraticmath_offpolicy.jsonl 3000 \\
+      --log-path ./logs/offpolicy_distillation_run_002 \\
       --learning-rate 1e-5 \\
       --max-tokens 2048
         """,
@@ -107,22 +103,22 @@ Examples:
     )
     
     # Data arguments
-    seeds_group = parser.add_mutually_exclusive_group(required=True)
-    seeds_group.add_argument(
-        "--seeds-file",
+    conversations_group = parser.add_mutually_exclusive_group(required=True)
+    conversations_group.add_argument(
+        "--conversations-file",
         type=Path,
-        help="Path to single JSONL seed file",
+        help="Path to single JSONL file with conversation trajectories",
     )
-    seeds_group.add_argument(
-        "--seeds-files",
+    conversations_group.add_argument(
+        "--conversations-files",
         nargs="+",
-        help="List of seed files with optional limits: file1 limit1 file2 limit2 ...",
+        help="List of conversation files with optional limits: file1 limit1 file2 limit2 ...",
     )
     parser.add_argument(
-        "--seeds-limit",
+        "--conversations-limit",
         type=int,
         default=None,
-        help="Optional limit on number of seeds to load (only used with --seeds-file)",
+        help="Optional limit on number of conversations to load (only used with --conversations-file)",
     )
     
     # Training arguments
@@ -136,16 +132,10 @@ Examples:
         "--log-path",
         type=str,
         default=None,
-        help="Path for logging and checkpoints (default: ./distillation_results/{date}_{tutor_model})",
+        help="Path for logging and checkpoints (default: ./offpolicy_distillation_results/{date}_{tutor_model})",
     )
     
     # Optional arguments
-    parser.add_argument(
-        "--student-model",
-        type=str,
-        default="Kimi-K2-Thinking",
-        help="Name of the student model (simulated student, default: Kimi-K2-Thinking)",
-    )
     parser.add_argument(
         "--learning-rate",
         type=float,
@@ -157,18 +147,6 @@ Examples:
         type=int,
         default=10,
         help="Number of environment groups per batch",
-    )
-    parser.add_argument(
-        "--num-envs",
-        type=int,
-        default=2,
-        help="Number of environments per group",
-    )
-    parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=20,
-        help="Maximum conversation turns",
     )
     parser.add_argument(
         "--base-url",
@@ -185,51 +163,46 @@ Examples:
         tutor_model_safe = args.tutor_model.replace("/", "_").replace(":", "_").replace("-", "_")
         # Format: YYYYMMDD_HHMMSS
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.log_path = f"./distillation_results/{timestamp}_{tutor_model_safe}"
+        args.log_path = f"./offpolicy_distillation_results/{timestamp}_{tutor_model_safe}"
     
-    # Parse seeds_files if provided
-    seeds_files = None
-    seeds_file = None
-    seeds_limit = None
+    # Parse conversations_files if provided
+    conversations_files = None
+    conversations_file = None
+    conversations_limit = None
     
-    if args.seeds_files:
-        seeds_files = parse_seeds_files_args(args.seeds_files)
-        print(f"📂 Using multiple seed files:")
-        for file_path, limit in seeds_files:
+    if args.conversations_files:
+        conversations_files = parse_conversations_files_args(args.conversations_files)
+        print(f"📂 Using multiple conversation files:")
+        for file_path, limit in conversations_files:
             print(f"   - {file_path} (limit: {limit if limit is not None else 'unlimited'})")
     else:
-        seeds_file = args.seeds_file
-        seeds_limit = args.seeds_limit
-        print(f"📂 Using single seed file: {seeds_file}")
-        if seeds_limit:
-            print(f"   Limit: {seeds_limit}")
+        conversations_file = args.conversations_file
+        conversations_limit = args.conversations_limit
+        print(f"📂 Using single conversation file: {conversations_file}")
+        if conversations_limit:
+            print(f"   Limit: {conversations_limit}")
     
     # Build config
-    print("\n🔧 Building distillation config...")
-    config = build_socratic_config(
+    print("\n🔧 Building off-policy distillation config...")
+    config = build_offpolicy_socratic_config(
         tutor_model_name=args.tutor_model,
-        student_model_name=args.student_model,
         teacher_model_name=args.teacher_model,
         learning_rate=args.learning_rate,
         max_tokens=args.max_tokens,
         log_path=args.log_path,
         groups_per_batch=args.groups_per_batch,
-        num_envs=args.num_envs,
-        max_turns=args.max_turns,
-        seeds_file=seeds_file,
-        seeds_limit=seeds_limit,
-        seeds_files=seeds_files,
+        conversations_file=conversations_file,
+        conversations_limit=conversations_limit,
+        conversations_files=conversations_files,
         base_url=args.base_url,
     )
     
     print(f"\n✅ Config built successfully!")
     print(f"   Tutor model: {args.tutor_model}")
-    print(f"   Student model: {args.student_model}")
     print(f"   Teacher model: {args.teacher_model}")
     print(f"   Learning rate: {args.learning_rate}")
     print(f"   Log path: {args.log_path}")
-    print(f"\n🚀 Starting distillation training...\n")
+    print(f"\n🚀 Starting off-policy distillation training...\n")
     
     # Run training
     asyncio.run(main(config))
-

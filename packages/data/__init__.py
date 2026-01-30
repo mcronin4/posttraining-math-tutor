@@ -14,6 +14,10 @@ from .schemas import (
     TutoringMode,
     TutoringPrompt,
 )
+from .offpolicy_types import (
+    ConversationMessage,
+    ConversationTrajectory,
+)
 
 __all__ = [
     "Difficulty",
@@ -24,5 +28,7 @@ __all__ = [
     "TrainingExample",
     "TutoringMode",
     "TutoringPrompt",
+    "ConversationMessage",
+    "ConversationTrajectory",
 ]
 

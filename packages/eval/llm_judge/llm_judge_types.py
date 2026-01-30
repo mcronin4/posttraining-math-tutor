@@ -19,10 +19,14 @@ class ModelClients:
     tutor_tokenizer: Tokenizer
     tutor_renderer: Renderer
     tutor_model_name: str
-    student_judge_client: tinker.SamplingClient # Shared client for student and judge
-    student_judge_tokenizer: Tokenizer
-    student_judge_renderer: Renderer
-    student_judge_model_name: str
+    student_client: tinker.SamplingClient
+    student_tokenizer: Tokenizer
+    student_renderer: Renderer
+    student_model_name: str
+    judge_client: tinker.SamplingClient
+    judge_tokenizer: Tokenizer
+    judge_renderer: Renderer
+    judge_model_name: str
 
 
 @dataclass

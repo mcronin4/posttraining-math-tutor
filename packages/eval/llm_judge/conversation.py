@@ -59,9 +59,9 @@ async def run_conversation(
     
     # Create simulated student instance
     simulated_student = SimulatedStudent(
-        client=model_clients.student_judge_client,
-        renderer=model_clients.student_judge_renderer,
-        tokenizer=model_clients.student_judge_tokenizer,
+        client=model_clients.student_client,
+        renderer=model_clients.student_renderer,
+        tokenizer=model_clients.student_tokenizer,
         student_profile=student_profile,
     )
     
@@ -75,6 +75,21 @@ async def run_conversation(
             log_buffer.append(msg)
         else:
             print(msg)
+        
+        # DEBUG: Log messages state before student turn
+        if debug:
+            debug_msg = f"\n🔍 DEBUG (conversation.py turn {turn}): messages list has {len(messages)} items before student turn"
+            if log_buffer is not None:
+                log_buffer.append(debug_msg)
+            else:
+                print(debug_msg)
+            for i, msg_obj in enumerate(messages):
+                debug_msg = f"  messages[{i}]: role={msg_obj.role}, turn={msg_obj.turn}, content_len={len(msg_obj.content)}"
+                if log_buffer is not None:
+                    log_buffer.append(debug_msg)
+                else:
+                    print(debug_msg)
+        
         # Student turn (student goes first)
         # Use seed_error only on the first turn
         current_seed_error = seed_error if turn == 1 else None
@@ -232,13 +247,13 @@ Format your response as a JSON object with the following structure:
 """
     
     judge_content, judge_thinking = await generate_response(
-        client=model_clients.student_judge_client,
-        renderer=model_clients.student_judge_renderer,
-        tokenizer=model_clients.student_judge_tokenizer,
+        client=model_clients.judge_client,
+        renderer=model_clients.judge_renderer,
+        tokenizer=model_clients.judge_tokenizer,
         system_prompt=judge_prompt,
         temperature=0.3,  # Lower temperature for more consistent judging
         max_tokens=8192, # Need longer max tokens because even when the 'response' is short, the thinking takes quite a few tokens
-        role="student",  # Judge uses student/judge client, default to student role
+        role="student",  # Judge uses student role for generation
         debug=debug,
         log_buffer=log_buffer,
     )

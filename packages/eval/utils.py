@@ -267,8 +267,23 @@ def parse_reasoning_blocks(response: str) -> tuple[str, Optional[str]]:
     closing_tag_pattern = re.compile(r'</think>', re.IGNORECASE)
     closing_tag_matches = list(closing_tag_pattern.finditer(response))
     
-    # If no closing tags found, there's no thinking to extract
+    # Find all opening tags (case-insensitive)
+    opening_tag_pattern = re.compile(r'<think>', re.IGNORECASE)
+    opening_tag_matches = list(opening_tag_pattern.finditer(response))
+    
+    # If no closing tags found, check for incomplete thinking tags
     if not closing_tag_matches:
+        # If there's an opening tag but no closing tag, remove everything from the opening tag onwards
+        if opening_tag_matches:
+            # Find the first opening tag
+            first_open_match = opening_tag_matches[0]
+            first_open_pos = first_open_match.start()
+            # Return content before the opening tag, and the thinking content (incomplete)
+            content_before = response[:first_open_pos].strip()
+            thinking_content = response[first_open_pos + len(first_open_match.group()):].strip()
+            # Return empty content if everything was in the thinking tag, None for thinking since it's incomplete
+            return content_before, None
+        # No tags at all - return response as-is
         return response.strip(), None
     
     # Find the last closing tag position and its actual length
@@ -276,8 +291,18 @@ def parse_reasoning_blocks(response: str) -> tuple[str, Optional[str]]:
     last_closing_pos = last_closing_match.start()
     last_closing_tag_length = len(last_closing_match.group())
     
-    # Everything after the last </think> (case-insensitive) is the final content
-    content = response[last_closing_pos + last_closing_tag_length:].strip()
+    # Check if there's an incomplete thinking tag after the last closing tag
+    # (i.e., an opening tag without a matching closing tag)
+    after_last_closing = response[last_closing_pos + last_closing_tag_length:]
+    incomplete_open_match = opening_tag_pattern.search(after_last_closing)
+    
+    if incomplete_open_match:
+        # There's an incomplete tag - remove everything from that opening tag onwards
+        incomplete_open_pos = last_closing_pos + last_closing_tag_length + incomplete_open_match.start()
+        content = response[last_closing_pos + last_closing_tag_length:incomplete_open_pos].strip()
+    else:
+        # Everything after the last </think> (case-insensitive) is the final content
+        content = after_last_closing.strip()
     
     # Now extract thinking blocks - try to find matching pairs first (preferred, case-insensitive)
     reasoning_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL | re.IGNORECASE)

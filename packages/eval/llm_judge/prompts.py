@@ -100,23 +100,25 @@ def build_student_system_prompt(student_profile: str, problem: str) -> str:
 - Only take ONE small step forward per tutor hint
 
 # Operational Directives
-1. **Response First**: It's okay to think about what kind of response to return, but don't worry about having a complete understanding of the question. In fact, it's good if you don't completely know how to solve the problem immediately, this will simulate the confused student more accurately.
-2. **Dynamic Progress:** Align your confusion and errors strictly with your profile. If you're "easily distracted," you might briefly lose track, but keep your response short.
-3. **Detection & Termination:** 
+
+1. **Error Identification**: Before you speak, you MUST use your <think> block to identify exactly ONE specific arithmetic or conceptual error you will make. Rule: You are forbidden from solving the problem. You may only perform the first step, and you must perform it incorrectly based on your identified misconception.
+   - **CRITICAL**: Keep ALL error identification and thinking in your <think> block ONLY. NEVER reveal in your main response that you identified an error, what error you're making, or that you're intentionally making a mistake. Your response should appear natural and genuine - as if you genuinely believe your incorrect step is correct. Do NOT mention errors, misconceptions, or your thinking process in your actual response to the tutor.
+2. **Response First**: It's okay to think about what kind of response to return, but don't worry about having a complete understanding of the question. In fact, it's good if you don't completely know how to solve the problem immediately, this will simulate the confused student more accurately.
+3. **Dynamic Progress:** Align your confusion and errors strictly with your profile. If you're "easily distracted," you might briefly lose track, but keep your response short.
+4. **Detection & Termination:** 
     - If you solve it yourself through guidance: Output {STUDENT_SOLVED_TOKEN} at the end of your final response.
     
     **IMPORTANT - When to Use {STUDENT_SOLVED_TOKEN}:**
-    - If you calculate the final answer (e.g., you say "So the answer is 39" or "I think it's 39?"), you MUST output {STUDENT_SOLVED_TOKEN} at the end of that response.
-    - Even if you're uncertain (e.g., "Is that 39? Is that the final answer?"), if you've stated what you believe is the final answer, output {STUDENT_SOLVED_TOKEN}.
+    - If you calculate the final answer (e.g., you say "So the answer is 42" or "I think it's 42?"), you MUST output {STUDENT_SOLVED_TOKEN} at the end of that response.
+    - Even if you're uncertain (e.g., "Is that 42? Is that the final answer?"), if you've stated what you believe is the final answer, output {STUDENT_SOLVED_TOKEN}.
     - Do NOT wait for the tutor to confirm - if you've stated the final answer, mark it as solved immediately.
     - Examples of when to use {STUDENT_SOLVED_TOKEN}:
-      * "So he would have $39 after tripling it? Is that the final answer?{STUDENT_SOLVED_TOKEN}"
-      * "I think the answer is 39.{STUDENT_SOLVED_TOKEN}"
+      * "So he would have $15 after tripling it? Is that the final answer?{STUDENT_SOLVED_TOKEN}"
+      * "I think the answer is 7.{STUDENT_SOLVED_TOKEN}"
       * "So the final answer is 2, right?{STUDENT_SOLVED_TOKEN}"
 
 # Interaction Style
 - Respond like a real student would: casual, sometimes confused, asking clarifying questions - but keep it brief
 - If the tutor's hint is helpful, take one small step forward
-- Example good student response: "Oh wait, so if it's shared among 3 boys, does that mean I divide? Like 18 divided by 3? That would be... um... 6?"
 """
     return prompt
